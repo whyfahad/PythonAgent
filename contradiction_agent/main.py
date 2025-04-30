@@ -1,38 +1,44 @@
-# contradiction_agent/main.py
 from fastapi import FastAPI, WebSocket
+from starlette.websockets import WebSocketState  # ✅ Add this
 import uvicorn
-import requests
+import json
+from itertools import combinations
 
 app = FastAPI()
 
-# Naive contradiction detection via ConceptNet Antonym relation
-def get_antonyms(concept):
-    url = f"http://api.conceptnet.io/c/en/{concept.replace(' ', '_')}"
-    response = requests.get(url)
-    antonyms = []
-    if response.status_code == 200:
-        edges = response.json().get("edges", [])
-        for e in edges:
-            if e["rel"]["label"] == "Antonym":
-                antonyms.append(e["end"]["label"])
-    return antonyms
-
 @app.websocket("/check")
-async def contradiction_check(websocket: WebSocket):
+async def contradiction_checker(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            data = await websocket.receive_json()
-            concepts = data.get("concepts", [])
-            contradiction_pairs = []
-            for c1 in concepts:
-                antonyms = get_antonyms(c1)
-                for c2 in concepts:
-                    if c2 != c1 and c2 in antonyms:
-                        contradiction_pairs.append([c1, c2])
-            await websocket.send_json({"contradictions": contradiction_pairs})
-    except Exception as e:
-        print(f"[ContradictionAgent] Error: {e}")
+            try:
+                data = await websocket.receive_json()
+                concepts = data.get("concepts", [])
+                conceptnet_relations = data.get("conceptnet_relations", {})  # 🔥 must be passed from extractor
+
+                contradictions = []
+                for c1, c2 in combinations(concepts, 2):
+                    if are_contradictory(c1, c2, conceptnet_relations):
+                        contradictions.append([c1, c2])
+
+                await websocket.send_json({"contradictions": contradictions})
+            except Exception as e:
+                print("[ContradictionAgent] Error:", str(e))
+                break
+    finally:
+        if websocket.application_state != WebSocketState.DISCONNECTED:
+            await websocket.close()
+        print("[ContradictionAgent] WebSocket session ended.")
+
+def are_contradictory(concept1, concept2, conceptnet_relations):
+    c1_rels = conceptnet_relations.get(concept1.lower(), [])
+    c2_rels = conceptnet_relations.get(concept2.lower(), [])
+
+    # Check if either concept is listed as an 'Antonym' of the other
+    antonyms_c1 = {target.lower() for rel, target in c1_rels if rel == "Antonym"}
+    antonyms_c2 = {target.lower() for rel, target in c2_rels if rel == "Antonym"}
+
+    return concept2.lower() in antonyms_c1 or concept1.lower() in antonyms_c2
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8008, reload=True)
+    uvicorn.run("contradiction_agent.main:app", host="localhost", port=8008, reload=True, timeout_keep_alive=120)

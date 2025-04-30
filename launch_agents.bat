@@ -18,5 +18,15 @@ start cmd /k "cd goal_prediction_agent && uvicorn main:app --host localhost --po
 REM --- Contradiction Detection Agent ---
 start cmd /k "cd contradiction_agent && uvicorn main:app --host localhost --port 8008 --reload"
 
+REM --- Critic Agent
+start cmd /k "cd critic_agent && uvicorn main:app --host localhost --port 8009 --reload"
+
+REM --- Verifier Agent ---
+start cmd /k "cd verifier_agent && uvicorn main:app --host localhost --port 8010 --reload"
+
+
+
+
+
 echo All agents started.
 pause
