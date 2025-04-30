@@ -1,3 +1,61 @@
-# Ignore virtual environments
+# -------------------
+# Python cache files
+# -------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -------------------
+# Environment folders
+# -------------------
 .venv/
+venv/
+env/
 sonar_env/
+
+# -------------------
+# Distribution / packaging
+# -------------------
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# -------------------
+# Jupyter Notebooks
+# -------------------
+.ipynb_checkpoints/
+
+# -------------------
+# VS Code / IDEs
+# -------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# -------------------
+# OS and backup files
+# -------------------
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+
+# -------------------
+# Logs
+# -------------------
+*.log
+
+# -------------------
+# PyInstaller
+# -------------------
+*.spec
+
+# -------------------
+# Virtualenv/PyTorch binaries (should not be tracked)
+# -------------------
+*.dll
+*.lib
+*.so
+*.pyd
