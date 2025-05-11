@@ -29,25 +29,23 @@ def verify_inference(data):
         justification = " ".join(justifications).strip() if justifications else ""
         goals = item.get("goals", [])
 
-        # 1. Multi-agent agreement
-        if "SimilarityAgent" in sources and "RelationAgent" in sources:
-            pass  # ✅ Acceptable: support from both agents
-        else:
+        # Rule 1: Low delta
+        if round(confidence_delta, 4) < 0.01:
+            challenges.append({
+                "concept": concept,
+                "issue": "No meaningful confidence adjustment.",
+                "comment": f"{concept} had delta={confidence_delta}. Justification: {justification[:60]}..."
+            })
+
+        # Rule 2: Insufficient multi-agent support
+        if not ("SimilarityAgent" in sources and "RelationAgent" in sources):
             challenges.append({
                 "concept": concept,
                 "issue": "Only one agent supported.",
                 "comment": f"{concept} support insufficient. Sources: {sources}"
             })
 
-        # 2. Delta too small but final score is low
-        if abs(confidence_delta) < 0.01 and item.get("composite_score", 0) < 0.4:
-            challenges.append({
-                "concept": concept,
-                "issue": "No meaningful confidence adjustment.",
-                "comment": f"{concept} had low delta={confidence_delta:.4f}. Justification: {justification[:60]}..."
-            })
-
-        # 3. Goal checks
+        # Rule 3: Goal quality and entailment
         goal_text = goals[0].strip() if goals and isinstance(goals[0], str) else ""
         if len(goal_text) < 5:
             challenges.append({
@@ -57,9 +55,7 @@ def verify_inference(data):
             })
         else:
             label, score = check_entailment(concept, goal_text)
-            if label == "ENTAILMENT" and score >= 0.8:
-                pass  # ✅ Entailment is strong
-            else:
+            if label != "ENTAILMENT" or score < 0.6:
                 challenges.append({
                     "concept": concept,
                     "issue": "Goal not logically entailed.",
@@ -67,7 +63,6 @@ def verify_inference(data):
                 })
 
     return challenges
-
 
 def run_verifier_agent():
     pubsub = r.pubsub()
